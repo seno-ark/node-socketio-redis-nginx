@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Client</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.xz.style/serve/inter.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.2/new.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Socket.IO Client</h1>
+    </header>
+    <main x-data="App()" x-init="connect">
+        <template x-if="isConnected">
+            <div>
+                <p>
+                    <b>Room ID</b>
+                    <span x-text="roomID"></span>
+                </p>
+
+                <h3>Messages</h3>
+                <blockquote>
+                    <template x-for="msg in messages">
+                        <div>
+                            <span x-text="msg.date"></span>
+                            <span x-text="msg.content"></span>
+                        </div>
+                    </template>
+                </blockquote>
+            </div>
+        </template>
+
+        <template x-if="!isConnected">
+            <div>
+                Join Room: <a href="http://localhost?room_id=123">http://localhost?room_id=123</a>
+            </div>
+        </template>
+            
+        </template>
+        <div id="messages"></div>
+    </main>
+
+    <script>
+        function App() {
+            return {
+                isConnected: false,
+                socket: null,
+                roomID: "",
+                messages: [],
+                connect() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const roomID = urlParams.get('room_id');
+                    if (roomID == null || roomID.length == 0) {
+                        return;
+                    }
+
+                    this.socket = io("ws://localhost", {
+                        path: '/socket.io',
+                        transports: ['websocket'],
+                        reconnectionDelayMax: 10000,
+                        auth: {
+                            token: "123"
+                        },
+                        query: {
+                            "my-key": "my-value"
+                        }
+                    });
+
+                    this.socket.emit('join', {room_id: roomID});
+                    this.roomID = roomID;
+                    this.isConnected = true
+
+                    this.socket.on("new_message", (data) => {
+                        console.log("new_message", data);
+
+                        const date = new Date(data.time);
+                        const timeStr = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+
+                        this.messages.push({
+                            date: timeStr,
+                            content: data.content
+                        });
+                    });
+
+                    /*
+                    =====================
+                    BUILTIN EVENTS
+                    =====================
+                    */
+
+                    this.socket.on('connect', () => {
+                        // Fired upon a connection including a successful reconnection.
+                        console.log(`[connect]`);
+                        console.dir(this.socket);
+                    });
+
+                    this.socket.on('connect_error', (error) => {
+                        // Fired upon a connection error.
+                        console.log(`[connect_error] ${error}`);
+                    });
+
+                    this.socket.on('connect_timeout', (timeout) => {
+                        // Fired upon a connection timeout.
+                        console.log(`[connect_timeout] ${timeout}`);
+                    });
+
+                    this.socket.on('error', (error) => {
+                        // Fired when an error occurs.
+                        console.log(`[error]`);
+                        console.dir(error);
+                    });
+
+                    this.socket.on('disconnect', (reason) => {
+                        // Fired upon a disconnection.
+                        console.log(`[disconnect] ${reason}`);
+                    });
+
+                    this.socket.on('reconnect', (attempt) => {
+                        // Fired upon a successful reconnection.
+                        console.log(`[reconnect] ${attempt}`);
+                    });
+
+                    this.socket.on('reconnect_attempt', (attempt) => {
+                        // Fired upon an attempt to reconnect.
+                        console.log(`[reconnect_attempt] ${attempt}`);
+                    });
+
+                    this.socket.on('reconnecting', (attempt) => {
+                        // Fired upon an attempt to reconnect.
+                        console.log(`[reconnecting] ${attempt}`);
+                    });
+
+                    this.socket.on('reconnect_error', (error) => {
+                        // Fired upon a reconnection attempt error.
+                        console.log(`[reconnect_error] ${error}`);
+                    });
+
+                    this.socket.on('reconnect_failed', (error) => {
+                        // Fired when couldn't reconnect within `reconnectionAttempts`.
+                        console.log(`[reconnect_failed]`);
+                    });
+
+                    this.socket.on('ping', () => {
+                        // Fired when a ping packet is written out to the server.
+                        // console.log(`[ping]`);
+                    });
+
+                    this.socket.on('pong', (latency) => {
+                        // Fired when a pong is received from the server.
+                        // console.log(`[pong] ${latency}ms`);
+                    });
+                }
+            }
+        }
+
+    </script>
+</body>
+</html>
